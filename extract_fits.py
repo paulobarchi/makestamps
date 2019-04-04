@@ -1,7 +1,7 @@
 #!env python
 import os
 import sys
-import coltools as ct
+#import coltools as ct
 import h5py as h5
 import astropy.io.fits as pyfits
 
@@ -30,18 +30,18 @@ def progbar(current, to, width=40, show=True, message=None, stderr=False):
     outstream.flush()
 
 
-def extract_objects(datastore, objids, outdir):
+def extract_objects(datastore, objids, outdir, bands):
     if objids is None:
-        extract_all(datastore, outdir)
+        extract_all(datastore, outdir, bands)
         return
     else:
-        extract_some(objids, datastore, outdir)
+        extract_some(objids, datastore, outdir, bands)
 
 
-def extract_some(ids, datastore, outdir):
+def extract_some(ids, datastore, outdir, bands):
     todo = len(ids)
     done = 0
-    ct.progbar(done, todo)
+    # ct.progbar(done, todo)
     with h5.File(datastore, "r") as f:
         ds = f['/stamps/']
         for tile in ds:
@@ -53,10 +53,10 @@ def extract_some(ids, datastore, outdir):
                 objid = objids[i].strip()
                 if objid in ids:
                     done += 1
-                    ct.progbar(done, todo)
+                    # ct.progbar(done, todo)
                     heads = headers[i]
-                    for b in range(5):
-                        band_name = "grizY" [b]
+                    for b in range(len(bands)):
+                        band_name = bands[b]
                         d = data[i, :, :, b]
                         head = pyfits.Header.fromstring(heads[b].strip())
                         filename = "%s/%s_%s.fits" % (outdir, objid, band_name)
@@ -68,7 +68,7 @@ def make_rgb(datastore, outdir):
     pass
 
 
-def extract_all(datastore, outdir):
+def extract_all(datastore, outdir, bands):
     with h5.File(datastore, "r") as f:
         ds = f['/stamps/']
         for tile in ds:
@@ -79,8 +79,8 @@ def extract_all(datastore, outdir):
             for i in range(N):
                 objid = objids[i].strip()
                 heads = headers[i]
-                for b in range(5):
-                    band_name = "grizY" [b]
+                for b in range(len(bands)):
+                    band_name = bands[b]
                     d = data[i, :, :, b]
                     head = pyfits.Header.fromstring(heads[b].strip())
                     filename = "%s/%s_%s.fits" % (outdir, objid, band_name)
@@ -90,26 +90,30 @@ def extract_all(datastore, outdir):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("image_extract <datastore> <dest_dir> [objids]")
+        print("image_extract <datastore> <dest_dir> <bands> [objids]")
         sys.exit(0)
 
     datastore = sys.argv[1]
     outdir = sys.argv[2]
 
-    inputs = None
-    if len(sys.argv) == 4:
+    # if len(sys.argv) > 3 (script+2args), bands should be there
+    bands = "r" # "my" default
+    # bands = "grizY" # old default
+    if len(sys.argv) > 3:
         inputs = sys.argv[3]
+
+    # only check for inputs if len(sys.argv) == 5 
+    inputs = None
+    if len(sys.argv) == 5:
+        inputs = sys.argv[4]
 
     if not os.path.exists(outdir):
         print("Output directory doesn't exist.")
         sys.exit(0)
 
-
-    if inputs is not None and os.path.exists(inputs):
-        objids = ct.fal(inputs)
-    elif inputs is not None:
+    if inputs is not None:
         objids = inputs.split(",")
     else:
         objids = None
 
-    extract_objects(datastore, objids, outdir)
+    extract_objects(datastore, objids, outdir, bands)
