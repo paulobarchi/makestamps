@@ -49,7 +49,7 @@ def progbar(current, to, width=40, show=True, message=None):
 
 
 class StampWorker(object):
-    def __init__(self, rank, name, catalog, datastore, datamap, dimension):
+    def __init__(self, rank, name, catalog, datastore, datamap, dimension, bands):
         self.datamap = datamap
         self.rank = rank
         self.name = name
@@ -60,6 +60,8 @@ class StampWorker(object):
         self.problem_tiles = {}
         self.complete_tiles = []
         self.dimension = dimension
+        #self.proportion = proportion
+        self.bands = bands
 
     def printlog(self, logstring):
         if verbose[0]:
@@ -88,8 +90,9 @@ class StampWorker(object):
                 if tile_to_process is None:
                     break
                 self.printlog(self.name + " working on tile " +
-                              tile_to_process)
-                filenames = get_tile_files(tile_to_process)
+                              tile_to_process + " with band(s) " + self.bands)
+                filenames = get_tile_files(tile_to_process, self.bands)
+
                 if filenames is None:
                     self.printlog("No files to process for tile %s. Abort!" %
                                   tile_to_process)
@@ -105,6 +108,7 @@ class StampWorker(object):
                     self.printlog("%d Making cuts to %s, %s" %
                                   (self.rank, str(f[0]), str(f[1])))
 
+                    self.printlog("b4 catch_warnings")
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
                         fits = pyfits.open(f[0])
@@ -114,6 +118,7 @@ class StampWorker(object):
                         fits,
                         f[1],
                         self.dimension,
+                        #self.proportion,
                         tofile=False,
                         data=ds,
                         headers=hd,
@@ -161,6 +166,12 @@ def main(argv):
         type=int,
         default=100,
         help="Size of stamps in pixels, default=100")
+    # parser.add_argument(
+    #     '--proportion',
+    #     type=int,
+    #     default=3,
+    #     help="Size of stamps in proportion to kron radius, default=3 (3*kron radius from center to each side)"
+    #     )
     parser.add_argument(
         '--flatten',
         help="Don't store stamps by tile in HDF5 output.",
@@ -169,11 +180,15 @@ def main(argv):
         '--no-cleanup',
         help="Don't remove fits files after processing.",
         action="store_true")
-
     parser.add_argument(
         '--verbose',
         help="More logging info to console.",
         action="store_true")
+    parser.add_argument(
+        '--bands',
+        default="grizY",
+        help="Desired bands (one after the other; no commas. Example: grizY.)"
+    )
     # Positional arguments
     parser.add_argument(
         "input_catalog",
@@ -199,6 +214,7 @@ def main(argv):
     batch_size = args.tiles_per_batch
     batches = args.batches
     dstore_prefix = args.datastore_prefix
+    bands = args.bands
 
     procs = args.processes
     start_index = 1
@@ -241,7 +257,7 @@ def main(argv):
                 proc = Process(
                     target=main_batch,
                     args=(tilebatch, dstore_name, p, args.flatten, dimension,
-                          batch_dict))
+                          batch_dict, bands))
                 proc.start()
                 proc_handles.append(proc)
                 b += 1
@@ -264,7 +280,7 @@ def main(argv):
     catalog.to_csv(catalog_file)
 
 
-def main_batch(catalog, dstore, rank, flatten, dimension, results_dict):
+def main_batch(catalog, dstore, rank, flatten, dimension, results_dict, bands):
     if verbose[0]:
         print("\nMaking stamps from %d tiles into datastore %s on core %d" %
           (len(catalog.TILENAME.unique()), dstore, rank+1))
@@ -315,7 +331,7 @@ def main_batch(catalog, dstore, rank, flatten, dimension, results_dict):
 
     datamap = {"bad_objects": [], "failed_tiles": [], "done_tiles": []}
     worker = StampWorker(rank, "Worker" + str(rank), catalog, datastore,
-                         datamap, dimension)
+                         datamap, dimension, bands)
     worker.run(random.randint(1, 10))
     datastore.close()
 
@@ -331,7 +347,7 @@ def initialise_datastore(datastore, dimension):
         dimension, dimension)
 
 
-def get_tile_files(tile):
+def get_tile_files(tile, bands):
     try:
         tilefile = tiles.loc[tile, 'FILENAME']
         tilepath = tiles.loc[tile, 'PATH']
@@ -344,7 +360,7 @@ def get_tile_files(tile):
         tilepath = tilepath[0]
 
     filenames = []
-    for band in "grizY":
+    for band in bands:
         filetoget = tilefile.replace("_r.fits", "_" + band + ".fits.fz")
         filenames.append((filetoget, band))
         if not os.path.isfile(filetoget):
