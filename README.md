@@ -1,5 +1,7 @@
 # Making DES stamps
 
+Forked from https://github.com/coljac/makestamps
+
 This code will extract a catalog of postage stamps from the DES Y3A1 tiles. It sorts your catalog of targets by DES tile then iterates through all the tiles - all 10,000 - makes the cutouts and stores them in HDF5 files for portability.
 
 ## Prerequisites
@@ -48,13 +50,22 @@ The stamp-maker will process all the stamps on the supplied number of tiles and 
 
 For example:
 
-    python catalog_to_stamps.py --processes 4 --dimension 128 mycat.csv 100 20 mystamps
+    python catalog_to_stamps.py --processes 4 --dimension 128 --bands r catalog_with_tiles.csv 100 20 mystamps
 
 Will take the catalog file `mycat.csv` and get the stamps from the top DES tiles, putting 100 tiles worth of stamps in each of 20 hdf5 outputs, named mystamps_001.hdf5 to mystamps_020.hdf5. It will run in parallel on 4 cores.
 
 For more info:
 
     python catalog_to_stamps.py --help
+
+## Structure of output file
+
+The HDF5 files output by the stamp maker contain the following datasets, one per tile processed:
+
+/stamps/<tile>/data: FITS data; dimensions N x dim x dim x 5, where N = stamps in this tile, dim = image dimensions, 5 = number of bands.
+/stamps/<tile>/masks: The number of masked pixels according to the mask HDU in the source FITS file.
+/stamps/<tile>/header: FITS headers, N x 5
+/stamps/<tile>/catalog: Object ids corresponding to the data, dimensions N x 1
 
 ## Getting individual FITS files
 
@@ -72,16 +83,25 @@ The list of objects can be either:
 
 For example:
 
-    python <list_of_objects> mycat_001.hdf5 outputs/ 1234567,
+    python fits_extract.py mycat_001.hdf5 outputs/ <list_of_objects>
 
-## Structure of output file
+## Getting individual png files
 
-The HDF5 files output by the stamp maker contain the following datasets, one per tile processed:
+To extract individual png stamp files (for deep learning):
 
-/stamps/<tile>/data: FITS data; dimensions N x dim x dim x 5, where N = stamps in this tile, dim = image dimensions, 5 = number of bands.
-/stamps/<tile>/masks: The number of masked pixels according to the mask HDU in the source FITS file.
-/stamps/<tile>/header: FITS headers, N x 5
-/stamps/<tile>/catalog: Object ids corresponding to the data, dimensions N x 1
+    python hdf5_to_png.py <HDF5 file> <output dir>
+
+or
+
+    python hdf5_to_png.py <HDF5 file> <output dir> <list_of_objects> 
+
+The list of objects can be either:
+- A text file with one object id per line
+- A comma-delimited string: object1,[object2,object3,...objectN]
+
+For example:
+
+    python hdf5_to_png.py mycat_001.hdf5 outputs/ <list_of_objects>
 
 ## Sample data
 
