@@ -4,6 +4,8 @@ Forked from https://github.com/coljac/makestamps
 
 This code will extract a catalog of postage stamps from the DES Y3A1 tiles. It sorts your catalog of targets by DES tile then iterates through all the tiles - all 10,000 - makes the cutouts and stores them in HDF5 files for portability.
 
+For this to work, you will have to put your DES credentials in "cred" file (username in the 1st line and password in the 2nd).
+
 ## Prerequisites
 
 The requirements can be installed with:
