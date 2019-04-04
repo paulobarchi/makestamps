@@ -71,11 +71,11 @@ The HDF5 files output by the stamp maker contain the following datasets, one per
 
 To extract individual FITS stamp files for easier use, use the h5tofits utility:
 
-    python fits_extract.py <HDF5 file> <output dir>
+    python extract_fits.py <HDF5 file> <output dir>
 
 or
 
-    python fits_extract.py <HDF5 file> <output dir> <list_of_objects> 
+    python extract_fits.py <HDF5 file> <output dir> <list_of_objects> 
 
 The list of objects can be either:
 - A text file with one object id per line
@@ -83,7 +83,7 @@ The list of objects can be either:
 
 For example:
 
-    python fits_extract.py mycat_001.hdf5 outputs/ <list_of_objects>
+    python extract_fits.py mycat_001.hdf5 outputs/ <list_of_objects>
 
 ## Getting individual png files
 
@@ -114,12 +114,12 @@ This should produce the output file sample_001.hdf5.
 To extract fits files individually:
 
     mkdir fits
-    python fits_extract.py sample_001.hdf5 fits
+    python extract_fits.py sample_001.hdf5 fits
 
 There should be 245 fits stamps in the fits/ directory.
 
 The following would also work:
 
-    python fits_extract.py sample_001.hdf4 fits 140013384,140013438
+    python extract_fits.py sample_001.hdf4 fits 140013384,140013438
 
 And creates 10 files, five bands for each of two objects.
